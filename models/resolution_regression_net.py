@@ -95,30 +95,22 @@ class ResolutionRegressionNet(nn.Module):
         x = self.head(x)  # [B, 3, H, W] -> [B, 32, H, W]
         x_pre = self.res_layers_down_pre(x)  # [B, 32, H, W] -> [B, 32, H, W]
 
-        # 第一层下采样
         x1 = self.down1(x_pre)  # [B, 32, H, W] -> [B, 64, H/2, W/2]
         x1 = self.res_layers_down1(x1)  # [B, 64, H/2, W/2] -> [B, 64, H/2, W/2]
 
-        # 第二层下采样
         x2 = self.down2(x1)  # [B, 64, H/2, W/2] -> [B, 128, H/4, W/4]
         x2 = self.res_layers_down2(x2)  # [B, 128, H/4, W/4] -> [B, 128, H/4, W/4]
 
-        # 第三层下采样 - 底层特征
         x3 = self.down3(x2)  # [B, 128, H/4, W/4] -> [B, 128, H/8, W/8]
         bottom_features = self.res_layers_bottom(x3)  # [B, 128, H/8, W/8]
 
-        # ============ 注意力增强 ============
         enhanced_features = self.channel_attention(bottom_features)  # [B, 128, H/8, W/8]
 
-        # ============ 全局特征聚合 ============
-        # 平均池化和最大池化结合
         avg_features = self.global_avg_pool(enhanced_features)  # [B, 128, 1, 1]
         max_features = self.global_max_pool(enhanced_features)  # [B, 128, 1, 1]
 
-        # 特征融合
         global_features = torch.cat([avg_features, max_features], dim=1)  # [B, 256, 1, 1]
 
-        # ============ 回归预测 ============
         resolution_pred = self.regression_head(global_features)  # [B, 3]
 
         return resolution_pred,x_pre
@@ -506,4 +498,5 @@ class DCFM(nn.Module):
         x_out = self.CA(self.conv1(x_out)) + origin_x
         x_out = x_out + self.ffn(self.norm2(x_out))
         x_out = torch.nan_to_num(x_out, nan=1e-5, posinf=1e-5, neginf=1e-5)
+
         return x_out
