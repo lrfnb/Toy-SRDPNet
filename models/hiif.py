@@ -28,7 +28,6 @@ class StyleAdapterAgnostic(nn.Module):
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(mid, 2 * c_out)
 
-        # 控制整体 style 注入强度
         self.gate = nn.Parameter(torch.tensor(0.0))
 
     def forward(self, z):
@@ -39,11 +38,10 @@ class StyleAdapterAgnostic(nn.Module):
         h = self.pool(h).squeeze(-1).squeeze(-1) # [B, mid]
 
         gb = self.fc(h)                          # [B, 2 * c_out]
-        gamma, beta = gb.chunk(2, dim=-1)        # 各 [B, c_out]
+        gamma, beta = gb.chunk(2, dim=-1)        #  [B, c_out]
 
         alpha = torch.sigmoid(self.gate)
 
-        # gate 控制整体幅度
         gamma = gamma * alpha
         beta = beta * alpha
 
@@ -53,12 +51,9 @@ class StyleAdapterAgnostic(nn.Module):
 class SFTBlock(nn.Module):
     def __init__(self, C):
         super().__init__()
-
-        # 每通道可学习缩放（防止 style 过强）
         self.gamma_scale = nn.Parameter(torch.zeros(1, C))
         self.beta_scale = nn.Parameter(torch.zeros(1, C))
 
-        # residual 注入强度 gate
         self.gate = nn.Parameter(torch.tensor(0.0))
 
     def forward(self, x, gamma, beta):
@@ -88,7 +83,6 @@ class SFTBlock(nn.Module):
             gamma_scale = self.gamma_scale
             beta_scale = self.beta_scale
 
-        # SFT 残差形式
         residual = x * (1.0 + gamma * gamma_scale) + beta * beta_scale
 
         alpha = torch.sigmoid(self.gate)
