@@ -1,5 +1,3 @@
-# modified from: https://github.com/yinboc/liif
-
 import argparse
 import os
 
@@ -58,12 +56,11 @@ def calculate_perceptual_loss(pred, gt, diffusion):
     b = pred.shape[0]
     t = torch.randint(0, 1000, (1,), device=pred.device).long().expand(b)
 
-    with torch.cuda.amp.autocast(enabled=False):  # 禁用自动混合精度
+    with torch.cuda.amp.autocast(enabled=False):  
         x_T = diffusion.q_sample(gt, t)
         xwave_T = diffusion.q_sample(pred, t)
         model_mean_gt, model_mean_hr = diffusion.perceptual_loss(x_T, xwave_T, t)
-
-    # 计算 mid_outputs_x 和 mid_outputs_xwave 中对应张量的 L1 Loss
+        
     l1_loss = 0.0
     for p, g in zip(model_mean_gt, model_mean_hr):
         l1_loss += F.l1_loss(p.float(), g.float())
@@ -180,11 +177,10 @@ def train(train_loader, model, optimizer, epoch):
     loss_fn = nn.L1Loss()
     train_loss = utils.Averager()
 
-    # 添加损失追踪器
     pixel_loss_tracker = utils.Averager()
-    perceptual_loss_raw_tracker = utils.Averager()  # 原始perceptual loss
-    perceptual_loss_weighted_tracker = utils.Averager()  # 加权后的perceptual loss
-    weight_tracker = utils.Averager()  # 权重追踪器
+    perceptual_loss_raw_tracker = utils.Averager()  
+    perceptual_loss_weighted_tracker = utils.Averager()
+    weight_tracker = utils.Averager() 
     pixel_ratio_tracker = utils.Averager()
     perceptual_ratio_tracker = utils.Averager()
 
@@ -198,7 +194,7 @@ def train(train_loader, model, optimizer, epoch):
     gt_sub = torch.FloatTensor(t['sub']).view(1, 1, -1).cuda()
     gt_div = torch.FloatTensor(t['div']).view(1, 1, -1).cuda()
 
-    num_dataset = 800  # DIV2K
+    num_dataset = 800  
     iter_per_epoch = int(
         num_dataset / config.get('train_dataset')['batch_size'] * config.get('train_dataset')['dataset']['args'][
             'repeat'])
@@ -315,7 +311,6 @@ def main(config_, save_path):
 
         writer.add_scalar('lr', optimizer.param_groups[0]['lr'], epoch)
 
-        # 修改这里来接收完整的训练结果
         train_results = train(train_loader, model, optimizer, epoch)
         (train_loss, avg_pixel_loss, avg_perceptual_loss_raw, avg_perceptual_loss_weighted,
          avg_weight, avg_pixel_ratio, avg_perceptual_ratio) = train_results
